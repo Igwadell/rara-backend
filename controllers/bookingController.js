@@ -353,6 +353,30 @@ export const updateBooking = asyncHandler(async (req, res, next) => {
   });
 });
 
+export const deleteBooking = asyncHandler(async (req, res, next) => {
+  const booking = await Booking.findById(req.params.id);
+
+  if (!booking) {
+    return next(
+      new ErrorResponse(`Booking not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  // Authorization check
+  if (booking.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    return next(
+      new ErrorResponse(`Not authorized to delete this booking`, 401)
+    );
+  }
+
+  await booking.remove();
+
+  res.status(200).json({
+    success: true,
+    data: {}
+  });
+});
+
 /**
  * @desc    Cancel booking
  * @route   PUT /api/v1/bookings/:id/cancel

@@ -20,7 +20,9 @@ export const register = asyncHandler(async (req, res, next) => {
   });
 
   // Create verification token
-  const verificationToken = user.getVerificationToken();
+  const verificationToken = user.verificationToken();
+  console.log("verificationToken:",verificationToken);
+  
   await user.save({ validateBeforeSave: false });
 
   // Create verification URL

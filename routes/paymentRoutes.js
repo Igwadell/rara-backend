@@ -4,7 +4,8 @@ import {
   getPayment,
   processPayment,
   verifyPayment,
-  processRefund
+  processRefund,
+  handlePaymentWebhook
 } from '../controllers/paymentController.js';
 import { protect, authorize } from '../middleware/auth.js';
 

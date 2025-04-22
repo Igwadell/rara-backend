@@ -17,7 +17,7 @@ router.get('/', searchProperties);
 router.get('/nearby', searchNearby);
 router.get('/area', searchWithinArea);
 router.get('/poi', searchByPOI);
-router.post('/image', uploadPropertyPhotos.single('image'), searchByImage);
+router.post('/image', uploadPropertyPhotos, searchByImage);
 router.get('/travel-time', getTravelTime);
 router.get('/autocomplete', getAutocompleteSuggestions);
 

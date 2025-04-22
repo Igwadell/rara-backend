@@ -520,6 +520,17 @@ export const processRefund = asyncHandler(async (req, res, next) => {
   }
 });
 
+export const handlePaymentWebhook = async (req, res) => {
+  try {
+    // Your webhook logic here
+    console.log('Webhook received:', req.body);
+    res.status(200).json({ received: true });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(400).json({ error: 'Webhook failed' });
+  }
+};
+
 /**
  * @desc    Get payment statistics
  * @route   GET /api/v1/payments/stats
@@ -565,6 +576,8 @@ export const getPaymentStats = asyncHandler(async (req, res, next) => {
       }
     }
   ]);
+
+  
 
   // Get payment methods distribution
   const methods = await Payment.aggregate([

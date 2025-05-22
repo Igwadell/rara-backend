@@ -133,27 +133,27 @@ const PropertySchema = new mongoose.Schema({
 });
 
 // Geocode & create location field
-PropertySchema.pre('save', async function(next) {
-  if (!this.isModified('address')) {
-    return next();
-  }
+// PropertySchema.pre('save', async function(next) {
+//   if (!this.isModified('address')) {
+//     return next();
+//   }
 
-  const loc = await geocoder.geocode(this.address);
-  this.location = {
-    type: 'Point',
-    coordinates: [loc[0].longitude, loc[0].latitude],
-    formattedAddress: loc[0].formattedAddress,
-    street: loc[0].streetName,
-    city: loc[0].city,
-    district: loc[0].administrativeLevels.level2long,
-    country: loc[0].country,
-    countryCode: loc[0].countryCode
-  };
+//   const loc = await geocoder.geocode(this.address);
+//   this.location = {
+//     type: 'Point',
+//     coordinates: [loc[0].longitude, loc[0].latitude],
+//     formattedAddress: loc[0].formattedAddress,
+//     street: loc[0].streetName,
+//     city: loc[0].city,
+//     district: loc[0].administrativeLevels.level2long,
+//     country: loc[0].country,
+//     countryCode: loc[0].countryCode
+//   };
 
-  // Do not save address in DB
-  this.address = undefined;
-  next();
-});
+//   // Do not save address in DB
+//   this.address = undefined;
+//   next();
+// });
 
 // Cascade delete bookings when property is deleted
 PropertySchema.pre('remove', async function(next) {

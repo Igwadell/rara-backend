@@ -8,7 +8,7 @@ import crypto from 'crypto';
 // @route   POST /api/v1/auth/register
 // @access  Public
 export const register = asyncHandler(async (req, res, next) => {
-  const { name, email, password, role, phone } = req.body;
+  const { name, email, password, role, phone, isVerified } = req.body;
 
   // Create user
   const user = await User.create({
@@ -16,11 +16,17 @@ export const register = asyncHandler(async (req, res, next) => {
     email,
     password,
     role,
-    phone
+    phone,
+    isVerified: isVerified || false
   });
 
+  // If user is already verified, send token response
+  if (isVerified) {
+    return sendTokenResponse(user, 200, res);
+  }
+
   // Create verification token
-  const verificationToken = user.verificationToken();
+  const verificationToken = user.getVerificationToken();
   console.log("verificationToken:",verificationToken);
   
   await user.save({ validateBeforeSave: false });

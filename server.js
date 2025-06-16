@@ -31,13 +31,26 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// CORS configuration
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
 // Database connection
 import { connect } from './config/db.js';
 await connect();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
 app.use(helmet());
 app.use(mongoSanitize());
 app.use(xss());

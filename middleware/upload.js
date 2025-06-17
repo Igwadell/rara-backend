@@ -240,3 +240,120 @@ export const cleanupUploads = async (req, res, next) => {
 
   next();
 };
+
+/**
+ * @desc    Middleware to handle avatar upload
+ * @param   {Object} req - Request object
+ * @param   {Object} res - Response object
+ * @param   {Function} next - Next middleware function
+ */
+export const uploadAvatar = async (req, res, next) => {
+  try {
+    if (!req.files || !req.files.avatar) {
+      return next(new ErrorResponse('Please upload an avatar image', 400));
+    }
+
+    const file = req.files.avatar;
+
+    // Validate image
+    if (!file.mimetype.startsWith('image')) {
+      return next(new ErrorResponse('Please upload an image file', 400));
+    }
+
+    // Check file size
+    if (file.size > process.env.MAX_FILE_UPLOAD) {
+      return next(
+        new ErrorResponse(
+          `Please upload an image less than ${process.env.MAX_FILE_UPLOAD / 1000000}MB`,
+          400
+        )
+      );
+    }
+
+    next();
+  } catch (err) {
+    console.error('Avatar upload middleware error:', err);
+    next(new ErrorResponse('Avatar upload failed', 500));
+  }
+};
+
+/**
+ * @desc    Middleware to handle image uploads
+ * @param   {Object} req - Request object
+ * @param   {Object} res - Response object
+ * @param   {Function} next - Next middleware function
+ */
+export const uploadImages = async (req, res, next) => {
+  try {
+    if (!req.files || !req.files.images) {
+      return next(new ErrorResponse('Please upload images', 400));
+    }
+
+    const files = Array.isArray(req.files.images) ? req.files.images : [req.files.images];
+
+    // Validate files
+    for (const file of files) {
+      if (!file.mimetype.startsWith('image')) {
+        return next(new ErrorResponse('Please upload image files only', 400));
+      }
+
+      if (file.size > process.env.MAX_FILE_UPLOAD) {
+        return next(
+          new ErrorResponse(
+            `Please upload images less than ${process.env.MAX_FILE_UPLOAD / 1000000}MB`,
+            400
+          )
+        );
+      }
+    }
+
+    next();
+  } catch (err) {
+    console.error('Image upload middleware error:', err);
+    next(new ErrorResponse('Image upload failed', 500));
+  }
+};
+
+/**
+ * @desc    Middleware to handle document uploads
+ * @param   {Object} req - Request object
+ * @param   {Object} res - Response object
+ * @param   {Function} next - Next middleware function
+ */
+export const uploadDocuments = async (req, res, next) => {
+  try {
+    if (!req.files || !req.files.documents) {
+      return next(new ErrorResponse('Please upload documents', 400));
+    }
+
+    const files = Array.isArray(req.files.documents) ? req.files.documents : [req.files.documents];
+
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+
+    // Validate files
+    for (const file of files) {
+      if (!allowedTypes.includes(file.mimetype)) {
+        return next(new ErrorResponse('Please upload valid document files (PDF, DOC, DOCX, TXT)', 400));
+      }
+
+      if (file.size > process.env.MAX_FILE_UPLOAD) {
+        return next(
+          new ErrorResponse(
+            `Please upload documents less than ${process.env.MAX_FILE_UPLOAD / 1000000}MB`,
+            400
+          )
+        );
+      }
+    }
+
+    next();
+  } catch (err) {
+    console.error('Document upload middleware error:', err);
+    next(new ErrorResponse('Document upload failed', 500));
+  }
+};

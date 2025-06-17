@@ -431,7 +431,6 @@ export const verifyPayment = asyncHandler(async (req, res, next) => {
 export const processRefund = asyncHandler(async (req, res, next) => {
   const payment = await Payment.findById(req.params.id).populate({
     path: 'booking',
-    select: 'property status',
     populate: {
       path: 'property',
       select: 'landlord'
@@ -439,85 +438,123 @@ export const processRefund = asyncHandler(async (req, res, next) => {
   });
 
   if (!payment) {
-    return next(
-      new ErrorResponse(`Payment not found with id of ${req.params.id}`, 404)
-    );
+    return next(new ErrorResponse(`Payment not found with id of ${req.params.id}`, 404));
   }
 
-  // Make sure user is property owner or admin
+  // Check authorization
   if (
     payment.booking.property.landlord.toString() !== req.user.id &&
     req.user.role !== 'admin'
   ) {
-    return next(
-      new ErrorResponse(
-        `User ${req.user.id} is not authorized to process this refund`,
-        401
-      )
-    );
+    return next(new ErrorResponse(`User ${req.user.id} is not authorized to process this refund`, 401));
   }
 
   // Check if payment can be refunded
   if (payment.status !== 'completed') {
-    return next(
-      new ErrorResponse(
-        `Only completed payments can be refunded. Current status: ${payment.status}`,
-        400
-      )
-    );
+    return next(new ErrorResponse(`Payment cannot be refunded`, 400));
   }
 
-  // Check if booking is already completed
-  if (payment.booking.status === 'completed') {
-    return next(
-      new ErrorResponse(
-        `Cannot refund payment for a completed booking`,
-        400
-      )
-    );
-  }
+  // In a real implementation, you would integrate with a payment gateway here
+  // This is a mock implementation
+  payment.status = 'refunded';
+  payment.refundedAt = Date.now();
+  payment.refundAmount = req.body.amount || payment.amount;
+  await payment.save();
 
-  // In a real implementation, you would process the refund with the payment gateway
-  try {
-    // Mock refund processing
-    const refundDetails = await mockProcessRefund(payment.transactionId);
+  // Update booking payment status
+  await Booking.findByIdAndUpdate(payment.booking._id, {
+    paymentStatus: 'refunded'
+  });
 
-    // Update payment status
-    payment.status = 'refunded';
-    payment.refundDetails = refundDetails;
-    await payment.save();
+  res.status(200).json({
+    success: true,
+    data: payment
+  });
+});
 
-    // Update booking payment status
-    const booking = await Booking.findById(payment.booking);
-    if (booking) {
-      booking.paymentStatus = 'refunded';
-      await booking.save();
+/**
+ * @desc    Get payment history
+ * @route   GET /api/v1/payments/history
+ * @access  Private
+ */
+export const getPaymentHistory = asyncHandler(async (req, res, next) => {
+  const payments = await Payment.find({ user: req.user.id })
+    .populate({
+      path: 'booking',
+      select: 'checkInDate checkOutDate amount',
+      populate: {
+        path: 'property',
+        select: 'title'
+      }
+    })
+    .sort('-createdAt');
+
+  res.status(200).json({
+    success: true,
+    count: payments.length,
+    data: payments
+  });
+});
+
+/**
+ * @desc    Get payment methods
+ * @route   GET /api/v1/payments/methods
+ * @access  Private
+ */
+export const getPaymentMethods = asyncHandler(async (req, res, next) => {
+  // In a real implementation, you would fetch from PaymentMethod model
+  // For now, return mock data
+  const paymentMethods = [
+    {
+      id: '1',
+      type: 'card',
+      brand: 'Visa',
+      last4: '4242',
+      isDefault: true
     }
+  ];
 
-    // Get user details for email
-    const user = await User.findById(payment.user);
+  res.status(200).json({
+    success: true,
+    data: paymentMethods
+  });
+});
 
-    // Send refund confirmation email
-    const message = `Dear ${user.name},\n\nYour payment of ${payment.amount} RWF (Transaction ID: ${payment.transactionId}) has been refunded.\n\nRefund Amount: ${payment.amount} RWF\nRefund ID: ${refundDetails.refundId}\n\nIf you have any questions, please contact our support team.\n\nThank you for using Rara.com!`;
+/**
+ * @desc    Add payment method
+ * @route   POST /api/v1/payments/methods
+ * @access  Private
+ */
+export const addPaymentMethod = asyncHandler(async (req, res, next) => {
+  // In a real implementation, you would integrate with a payment gateway
+  // and save to PaymentMethod model
+  const paymentMethod = {
+    id: Date.now().toString(),
+    type: req.body.type,
+    brand: req.body.brand,
+    last4: req.body.last4,
+    isDefault: req.body.isDefault || false
+  };
 
-    try {
-      await sendEmail({
-        email: user.email,
-        subject: 'Rara.com - Payment Refund',
-        message
-      });
-    } catch (err) {
-      console.error('Failed to send refund confirmation email:', err);
-    }
+  res.status(201).json({
+    success: true,
+    data: paymentMethod
+  });
+});
 
-    res.status(200).json({
-      success: true,
-      data: payment
-    });
-  } catch (err) {
-    console.error('Refund processing error:', err);
-    return next(new ErrorResponse(`Refund processing failed: ${err.message}`, 500));
-  }
+/**
+ * @desc    Remove payment method
+ * @route   DELETE /api/v1/payments/methods/:id
+ * @access  Private
+ */
+export const removePaymentMethod = asyncHandler(async (req, res, next) => {
+  // In a real implementation, you would delete from PaymentMethod model
+  // and remove from payment gateway
+
+  res.status(200).json({
+    success: true,
+    data: {}
+  });
 });
 
 export const handlePaymentWebhook = async (req, res) => {
@@ -651,21 +688,6 @@ const mockPaymentVerification = async transactionId => {
     transactionId,
     status: randomStatus,
     verified: randomStatus === 'completed',
-    timestamp: new Date().toISOString()
-  };
-};
-
-// Mock refund processing
-const mockProcessRefund = async transactionId => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-
-  // Generate mock refund ID
-  const refundId = `ref_${Math.random().toString(36).substring(2, 15)}`;
-
-  return {
-    refundId,
-    status: 'processed',
     timestamp: new Date().toISOString()
   };
 };

@@ -3,6 +3,7 @@ import ErrorResponse from '../utils/errorResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import sendEmail from '../utils/sendEmail.js';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 // @desc    Register user
 // @route   POST /api/v1/auth/register
@@ -229,6 +230,96 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
   await user.save();
 
   sendTokenResponse(user, 200, res);
+});
+
+// @desc    Logout user / clear cookie
+// @route   POST /api/v1/auth/logout
+// @access  Private
+export const logout = asyncHandler(async (req, res, next) => {
+  res.cookie('token', 'none', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true
+  });
+
+  res.status(200).json({
+    success: true,
+    data: {}
+  });
+});
+
+// @desc    Refresh token
+// @route   POST /api/v1/auth/refresh
+// @access  Public
+export const refresh = asyncHandler(async (req, res, next) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return next(new ErrorResponse('Refresh token is required', 400));
+  }
+
+  try {
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    
+    const user = await User.findById(decoded.id);
+    
+    if (!user) {
+      return next(new ErrorResponse('User not found', 404));
+    }
+
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    return next(new ErrorResponse('Invalid refresh token', 401));
+  }
+});
+
+// @desc    Verify email
+// @route   POST /api/v1/auth/verify-email
+// @access  Public
+export const verifyEmail = asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return next(new ErrorResponse('Email is required', 400));
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return next(new ErrorResponse('User not found', 404));
+  }
+
+  if (user.isVerified) {
+    return next(new ErrorResponse('Email is already verified', 400));
+  }
+
+  // Create verification token
+  const verificationToken = user.getVerificationToken();
+  await user.save({ validateBeforeSave: false });
+
+  // Create verification URL
+  const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify/${verificationToken}`;
+
+  const message = `You are receiving this email because you requested to verify your account. Please verify your account by clicking on the following link: \n\n ${verificationUrl}`;
+
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: 'Rara.com - Account Verification',
+      message
+    });
+
+    res.status(200).json({
+      success: true,
+      data: 'Verification email sent'
+    });
+  } catch (err) {
+    console.error(err);
+    user.verificationToken = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return next(new ErrorResponse('Email could not be sent', 500));
+  }
 });
 
 // Get token from model, create cookie and send response

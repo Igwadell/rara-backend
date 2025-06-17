@@ -2,6 +2,9 @@ import express from 'express';
 import {
   getNotifications,
   sendNotification,
+  markNotificationAsRead,
+  deleteNotification,
+  updateNotificationSettings,
   getMessages,
   sendMessage,
   getEmailTemplates,
@@ -22,6 +25,10 @@ router
   .route('/notifications')
   .get(advancedResults(Notification), getNotifications)
   .post(authorize('admin'), sendNotification);
+
+router.put('/notifications/:id/read', markNotificationAsRead);
+router.delete('/notifications/:id', deleteNotification);
+router.post('/notifications/settings', updateNotificationSettings);
 
 // Message routes
 router

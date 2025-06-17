@@ -5,7 +5,11 @@ import {
   processPayment,
   verifyPayment,
   processRefund,
-  handlePaymentWebhook
+  handlePaymentWebhook,
+  getPaymentHistory,
+  getPaymentMethods,
+  addPaymentMethod,
+  removePaymentMethod
 } from '../controllers/paymentController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -16,12 +20,30 @@ const router = express.Router({ mergeParams: true });
 router.post('/webhook', handlePaymentWebhook);
 
 // Protected routes
-router.get('/', protect, getPayments);
-router.get('/:id', protect, getPayment);
-router.post('/', protect, processPayment);
-router.get('/verify/:transactionId', protect, verifyPayment);
+router.use(protect);
 
-// Admin/Landlord routes
-router.post('/:id/refund', protect, authorize('landlord', 'admin'), processRefund);
+// Payment routes
+router
+  .route('/')
+  .get(getPayments)
+  .post(processPayment);
+
+router
+  .route('/:id')
+  .get(getPayment);
+
+router.post('/:id/refund', processRefund);
+router.post('/verify', verifyPayment);
+
+// Payment history
+router.get('/history', getPaymentHistory);
+
+// Payment methods
+router
+  .route('/methods')
+  .get(getPaymentMethods)
+  .post(addPaymentMethod);
+
+router.delete('/methods/:id', removePaymentMethod);
 
 export default router;

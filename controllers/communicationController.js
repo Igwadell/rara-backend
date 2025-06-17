@@ -36,6 +36,68 @@ export const sendNotification = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc    Mark notification as read
+// @route   PUT /api/v1/communication/notifications/:id/read
+// @access  Private
+export const markNotificationAsRead = asyncHandler(async (req, res, next) => {
+  const notification = await Notification.findById(req.params.id);
+
+  if (!notification) {
+    return next(new ErrorResponse(`Notification not found with id of ${req.params.id}`, 404));
+  }
+
+  // Make sure user owns the notification
+  if (notification.user.toString() !== req.user.id) {
+    return next(new ErrorResponse(`User ${req.user.id} is not authorized to update this notification`, 401));
+  }
+
+  notification.isRead = true;
+  notification.readAt = Date.now();
+  await notification.save();
+
+  res.status(200).json({
+    success: true,
+    data: notification
+  });
+});
+
+// @desc    Delete notification
+// @route   DELETE /api/v1/communication/notifications/:id
+// @access  Private
+export const deleteNotification = asyncHandler(async (req, res, next) => {
+  const notification = await Notification.findById(req.params.id);
+
+  if (!notification) {
+    return next(new ErrorResponse(`Notification not found with id of ${req.params.id}`, 404));
+  }
+
+  // Make sure user owns the notification
+  if (notification.user.toString() !== req.user.id) {
+    return next(new ErrorResponse(`User ${req.user.id} is not authorized to delete this notification`, 401));
+  }
+
+  await notification.deleteOne();
+
+  res.status(200).json({
+    success: true,
+    data: {}
+  });
+});
+
+// @desc    Update notification settings
+// @route   POST /api/v1/communication/notifications/settings
+// @access  Private
+export const updateNotificationSettings = asyncHandler(async (req, res, next) => {
+  // This would typically update user settings for notifications
+  // For now, we'll just return a success response
+  // In a real implementation, you'd update the UserSettings model
+
+  res.status(200).json({
+    success: true,
+    data: 'Notification settings updated successfully'
+  });
+});
+
 // @desc    Get all messages
 // @route   GET /api/v1/communication/messages
 // @access  Private

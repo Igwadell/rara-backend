@@ -15,6 +15,7 @@ import fileUpload from 'express-fileupload';
 // Import routes
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import userProfileRoutes from './routes/userProfileRoutes.js';
 import propertyRoutes from './routes/propertyRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
@@ -22,6 +23,9 @@ import searchRoutes from './routes/searchRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import contentRoutes from './routes/contentRoutes.js';
 import communicationRoutes from './routes/communicationRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import landlordRoutes from './routes/landlordRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 
 import errorHandler from './middleware/error.js';
 
@@ -77,6 +81,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/user', userProfileRoutes);
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/v1/bookings', bookingRoutes);
 app.use('/api/v1/payments', paymentRoutes);
@@ -84,6 +89,9 @@ app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/content', contentRoutes);
 app.use('/api/v1/communication', communicationRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/landlord', landlordRoutes);
+app.use('/api/v1/upload', uploadRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

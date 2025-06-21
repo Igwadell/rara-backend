@@ -7,7 +7,8 @@ import {
   deleteProperty,
   propertyPhotoUpload,
   getPropertiesInRadius,
-  verifyProperty
+  verifyProperty,
+  uploadPropertyImages
 } from '../controllers/propertyController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { uploadPropertyPhotos } from '../middleware/upload.js';
@@ -38,5 +39,6 @@ router.put('/:id', protect, authorize('landlord', 'admin'), updateProperty);
 router.delete('/:id', protect, authorize('landlord', 'admin'), deleteProperty);
 router.put('/:id/verify', protect, authorize('admin'), verifyProperty);
 router.put('/:id/photo', protect, authorize('landlord', 'admin'), uploadPropertyPhotos, propertyPhotoUpload);
+router.post('/upload', protect, authorize('landlord', 'admin'), uploadPropertyPhotos, uploadPropertyImages);
 
 export default router;

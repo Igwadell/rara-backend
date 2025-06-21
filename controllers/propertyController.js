@@ -255,3 +255,36 @@ export const verifyProperty = asyncHandler(async (req, res, next) => {
     data: property
   });
 });
+
+// @desc    Upload multiple images for a property (gallery)
+// @route   POST /api/v1/properties/upload
+// @access  Private (landlord, admin)
+export const uploadPropertyImages = asyncHandler(async (req, res, next) => {
+  if (!req.files || !req.files.files) {
+    return next(new ErrorResponse('Please upload one or more image files', 400));
+  }
+
+  const files = Array.isArray(req.files.files) ? req.files.files : [req.files.files];
+  const urls = [];
+
+  for (const file of files) {
+    if (!file.mimetype.startsWith('image')) {
+      return next(new ErrorResponse('Please upload only image files', 400));
+    }
+    if (file.size > process.env.MAX_FILE_UPLOAD) {
+      return next(new ErrorResponse(`Please upload an image less than ${process.env.MAX_FILE_UPLOAD}`, 400));
+    }
+    const result = await cloudinary.uploader.upload(file.tempFilePath, {
+      folder: 'rara/properties',
+      width: 1500,
+      height: 1000,
+      crop: 'scale'
+    });
+    urls.push({ url: result.secure_url, public_id: result.public_id, width: result.width, height: result.height });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: urls
+  });
+});

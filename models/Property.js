@@ -75,9 +75,9 @@ const PropertySchema = new mongoose.Schema({
     type: [String],
     required: true,
     enum: [
-      'wifi',
+      'wi-fi',
       'parking',
-      'pool',
+      'swimming-pool',
       'kitchen',
       'air-conditioning',
       'heating',

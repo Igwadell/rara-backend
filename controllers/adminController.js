@@ -335,13 +335,94 @@ export const getPendingBookings = asyncHandler(async (req, res, next) => {
 // @route   GET /api/v1/admin/analytics
 // @access  Private/Admin
 export const getAnalyticsData = asyncHandler(async (req, res, next) => {
+  // Totals
   const totalUsers = await User.countDocuments();
   const totalProperties = await Property.countDocuments();
   const totalBookings = await Booking.countDocuments();
-  const totalRevenue = await Booking.aggregate([
+  const totalRevenueAgg = await Booking.aggregate([
     { $match: { status: 'completed' } },
-    { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+    { $group: { _id: null, total: { $sum: '$amount' } } }
   ]);
+  const totalRevenue = totalRevenueAgg[0]?.total || 0;
+
+  // User growth by month
+  const userGrowthAgg = await User.aggregate([
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+  const userGrowth = userGrowthAgg.map(u => ({ month: u._id, count: u.count }));
+
+  // Booking growth by month
+  const bookingGrowthAgg = await Booking.aggregate([
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+  const bookingGrowth = bookingGrowthAgg.map(b => ({ month: b._id, count: b.count }));
+
+  // Revenue growth by month
+  const revenueGrowthAgg = await Booking.aggregate([
+    { $match: { status: 'completed' } },
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+        amount: { $sum: '$amount' }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+  const revenueGrowth = revenueGrowthAgg.map(r => ({ month: r._id, amount: r.amount }));
+
+  // Properties by type
+  const propertiesByTypeAgg = await Property.aggregate([
+    {
+      $group: {
+        _id: '$propertyType',
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { count: -1 } }
+  ]);
+  const propertiesByType = propertiesByTypeAgg.map(p => ({ type: p._id, count: p.count }));
+
+  // Bookings by status
+  const bookingsByStatusAgg = await Booking.aggregate([
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+  const bookingsByStatus = bookingsByStatusAgg.map(b => ({ status: b._id, count: b.count }));
+
+  // Recent users (last 5)
+  const recentUsersDocs = await User.find({}, { name: 1, createdAt: 1 })
+    .sort({ createdAt: -1 })
+    .limit(5);
+  const recentUsers = recentUsersDocs.map(u => ({ id: u._id, name: u.name, joinedAt: u.createdAt }));
+
+  // Recent bookings (last 5)
+  const recentBookingsDocs = await Booking.find({}, { createdAt: 1 })
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .populate('user', 'name')
+    .populate('property', 'title');
+  const recentBookings = recentBookingsDocs.map(b => ({
+    id: b._id,
+    user: b.user?.name || '',
+    property: b.property?.title || '',
+    date: b.createdAt
+  }));
 
   res.status(200).json({
     success: true,
@@ -349,7 +430,14 @@ export const getAnalyticsData = asyncHandler(async (req, res, next) => {
       totalUsers,
       totalProperties,
       totalBookings,
-      totalRevenue: totalRevenue[0]?.total || 0
+      totalRevenue,
+      userGrowth,
+      bookingGrowth,
+      revenueGrowth,
+      propertiesByType,
+      bookingsByStatus,
+      recentUsers,
+      recentBookings
     }
   });
 });

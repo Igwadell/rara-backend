@@ -9,8 +9,12 @@ import {
   getPaymentHistory,
   getPaymentMethods,
   addPaymentMethod,
-  removePaymentMethod
+  removePaymentMethod,
+  getRefunds
 } from '../controllers/paymentController.js';
+import advancedResults from '../middleware/advancedResults.js';
+import Payment from '../models/Payment.js';
+
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router({ mergeParams: true });
@@ -25,7 +29,7 @@ router.use(protect);
 // Payment routes
 router
   .route('/')
-  .get(getPayments)
+  .get(advancedResults(Payment, 'user booking'), getPayments)
   .post(processPayment);
 
 router
@@ -45,5 +49,7 @@ router
   .post(addPaymentMethod);
 
 router.delete('/methods/:id', removePaymentMethod);
+
+router.get('/refunds', authorize('admin'), getRefunds);
 
 export default router;

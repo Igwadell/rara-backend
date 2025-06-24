@@ -61,6 +61,7 @@ export const getPayments = asyncHandler(async (req, res, next) => {
     });
   } else if (req.user.role === 'admin') {
     // Admin can see all payments
+    console.log('advancedResults:', res.advancedResults);
     res.status(200).json(res.advancedResults);
   } else if (req.user.role === 'landlord') {
     // Landlord can only see payments for their properties
@@ -691,3 +692,25 @@ const mockPaymentVerification = async transactionId => {
     timestamp: new Date().toISOString()
   };
 };
+
+// @desc    Get all refunds
+// @route   GET /api/v1/refunds
+// @access  Private/Admin
+export const getRefunds = asyncHandler(async (req, res, next) => {
+  const refunds = await Payment.find({
+    status: { $in: ['refunded', 'partially_refunded'] }
+  })
+    .populate('user', 'name email')
+    .populate({
+      path: 'booking',
+      select: 'checkInDate checkOutDate amount',
+      populate: { path: 'property', select: 'title' }
+    })
+    .sort('-createdAt');
+
+  res.status(200).json({
+    success: true,
+    count: refunds.length,
+    data: refunds
+  });
+});

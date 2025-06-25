@@ -39,6 +39,6 @@ router.put('/:id', protect, authorize('landlord', 'admin'), updateProperty);
 router.delete('/:id', protect, authorize('landlord', 'admin'), deleteProperty);
 router.put('/:id/verify', protect, authorize('admin'), verifyProperty);
 router.put('/:id/photo', protect, authorize('landlord', 'admin'), uploadPropertyPhotos, propertyPhotoUpload);
-router.post('/upload', protect, authorize('landlord', 'admin'), uploadPropertyPhotos, uploadPropertyImages);
+router.post('/upload', protect, authorize('landlord', 'admin'), uploadPropertyImages);
 
 export default router;

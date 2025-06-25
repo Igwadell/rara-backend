@@ -126,6 +126,46 @@ const PropertySchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  listingType: {
+    type: String,
+    enum: ['rent', 'sale'],
+    required: true
+  },
+  state: String,
+  zipCode: String,
+  totalRooms: Number,
+  yearBuilt: Number,
+  parkingSpaces: Number,
+  furnished: Boolean,
+  petFriendly: Boolean,
+  images: [String],
+  virtualTourLink: String,
+  videoLink: String,
+  availableFrom: Date,
+  minimumLeasePeriod: String,
+  maximumOccupants: Number,
+  utilities: [{
+    type: String,
+    enum: [
+      'Water',
+      'Electricity',
+      'Gas',
+      'Internet',
+      'Cable TV',
+      'Trash Collection',
+      'Heating'
+    ]
+  }],
+  rules: [String],
+  contactName: String,
+  contactEmail: String,
+  contactPhone: String,
+  showContactInfo: Boolean,
+  status: {
+    type: String,
+    enum: ['active', 'pending', 'inactive'],
+    default: 'active'
   }
 }, {
   toJSON: { virtuals: true },

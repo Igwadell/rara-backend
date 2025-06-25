@@ -26,6 +26,14 @@ router.post('/webhook', handlePaymentWebhook);
 // Protected routes
 router.use(protect);
 
+// Payment methods
+router
+  .route('/methods')
+  .get(getPaymentMethods)
+  .post(addPaymentMethod);
+
+router.delete('/methods/:id', removePaymentMethod);
+
 // Payment routes
 router
   .route('/')
@@ -41,14 +49,6 @@ router.post('/verify', verifyPayment);
 
 // Payment history
 router.get('/history', getPaymentHistory);
-
-// Payment methods
-router
-  .route('/methods')
-  .get(getPaymentMethods)
-  .post(addPaymentMethod);
-
-router.delete('/methods/:id', removePaymentMethod);
 
 router.get('/refunds', authorize('admin'), getRefunds);
 

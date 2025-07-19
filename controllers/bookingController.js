@@ -3,7 +3,6 @@ import Property from '../models/Property.js';
 import User from '../models/User.js';
 import ErrorResponse from '../utils/errorResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
-import sendEmail from '../utils/sendEmail.js';
 import Payment from '../models/Payment.js';
 
 /**
@@ -228,37 +227,6 @@ export const createBooking = asyncHandler(async (req, res, next) => {
       select: 'name email'
     });
 
-  // Send confirmation email to user
-  const userMessage = `Dear ${populatedBooking.user.name},\n\nYou have successfully booked ${populatedBooking.property.title} from ${checkInDate.toLocaleDateString()} to ${checkOutDate.toLocaleDateString()}.\n\nTotal amount: ${req.body.amount} RWF.\n\nThank you for using Rara.com!`;
-
-  try {
-    await sendEmail({
-      email: populatedBooking.user.email,
-      subject: 'Rara.com - Booking Confirmation',
-      message: userMessage
-    });
-  } catch (err) {
-    console.error('Failed to send confirmation email:', err);
-  }
-
-  // If landlord exists, send notification email
-  if (property.landlord) {
-    const landlord = await User.findById(property.landlord);
-    if (landlord && landlord.email) {
-      const landlordMessage = `Dear ${landlord.name},\n\nYour property ${property.title} has been booked by ${populatedBooking.user.name} from ${checkInDate.toLocaleDateString()} to ${checkOutDate.toLocaleDateString()}.\n\nTotal amount: ${req.body.amount} RWF.\n\nPlease log in to your Rara.com account to manage this booking.`;
-
-      try {
-        await sendEmail({
-          email: landlord.email,
-          subject: 'Rara.com - New Booking Notification',
-          message: landlordMessage
-        });
-      } catch (err) {
-        console.error('Failed to send landlord notification email:', err);
-      }
-    }
-  }
-
   res.status(201).json({
     success: true,
     data: booking
@@ -415,40 +383,6 @@ export const cancelBooking = asyncHandler(async (req, res, next) => {
   booking.status = 'cancelled';
   await booking.save();
 
-  // Get user details for email
-  const user = await User.findById(booking.user);
-
-  // Send cancellation email to user
-  const userMessage = `Dear ${user.name},\n\nYour booking for ${booking.property.title} has been cancelled.\n\nIf you have any questions, please contact our support team.\n\nThank you for using Rara.com!`;
-
-  try {
-    await sendEmail({
-      email: user.email,
-      subject: 'Rara.com - Booking Cancellation',
-      message: userMessage
-    });
-  } catch (err) {
-    console.error('Failed to send cancellation email:', err);
-  }
-
-  // If landlord exists, send notification email
-  if (booking.property.landlord) {
-    const landlord = await User.findById(booking.property.landlord);
-    if (landlord && landlord.email) {
-      const landlordMessage = `Dear ${landlord.name},\n\nThe booking for your property ${booking.property.title} by ${user.name} has been cancelled.\n\nPlease log in to your Rara.com account for more details.`;
-
-      try {
-        await sendEmail({
-          email: landlord.email,
-          subject: 'Rara.com - Booking Cancellation Notification',
-          message: landlordMessage
-        });
-      } catch (err) {
-        console.error('Failed to send landlord notification email:', err);
-      }
-    }
-  }
-
   res.status(200).json({
     success: true,
     data: booking
@@ -499,22 +433,6 @@ export const completeBooking = asyncHandler(async (req, res, next) => {
   // Update booking status
   booking.status = 'completed';
   await booking.save();
-
-  // Get user details for email
-  const user = await User.findById(booking.user);
-
-  // Send completion email to user
-  const userMessage = `Dear ${user.name},\n\nYour stay at ${booking.property.title} has been marked as completed by the property owner.\n\nWe hope you enjoyed your stay!\n\nThank you for using Rara.com!`;
-
-  try {
-    await sendEmail({
-      email: user.email,
-      subject: 'Rara.com - Booking Completed',
-      message: userMessage
-    });
-  } catch (err) {
-    console.error('Failed to send completion email:', err);
-  }
 
   res.status(200).json({
     success: true,

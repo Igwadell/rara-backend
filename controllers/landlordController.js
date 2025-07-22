@@ -7,7 +7,12 @@ import Booking from '../models/Booking.js';
 // @route   GET /api/v1/landlord/properties
 // @access  Private/Landlord
 export const getLandlordProperties = asyncHandler(async (req, res, next) => {
-  res.status(200).json(res.advancedResults);
+  const properties = await Property.find({ landlord: req.user.id });
+  res.status(200).json({
+    success: true,
+    count: properties.length,
+    data: properties
+  });
 });
 
 // @desc    Create property for landlord

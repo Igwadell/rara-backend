@@ -52,18 +52,7 @@ export const createProperty = asyncHandler(async (req, res, next) => {
   // Add user to req.body
   req.body.landlord = req.user.id;
 
-  // Check for published property
-  const publishedProperty = await Property.findOne({ landlord: req.user.id });
-
-  // If the user is not an admin, they can only add one property
-  if (publishedProperty && req.user.role !== 'admin') {
-    return next(
-      new ErrorResponse(
-        `The user with ID ${req.user.id} has already published a property`,
-        400
-      )
-    );
-  }
+  // Removed single property restriction for landlords
 
   const property = await Property.create(req.body);
 

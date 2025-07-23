@@ -148,6 +148,29 @@ export const sendMessage = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc    Get conversation with a specific user
+// @route   GET /api/v1/communication/messages/conversation/:userId
+// @access  Private
+export const getConversationWithUser = asyncHandler(async (req, res, next) => {
+  const otherUserId = req.params.userId;
+  const userId = req.user.id;
+  const messages = await Message.find({
+    $or: [
+      { from: userId, to: otherUserId },
+      { from: otherUserId, to: userId }
+    ]
+  })
+    .populate('from', 'name email')
+    .populate('to', 'name email')
+    .sort('createdAt');
+
+  res.status(200).json({
+    success: true,
+    count: messages.length,
+    data: messages
+  });
+});
+
 // @desc    Get all email templates
 // @route   GET /api/v1/communication/email-templates
 // @access  Private/Admin

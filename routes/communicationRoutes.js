@@ -8,7 +8,8 @@ import {
   getMessages,
   sendMessage,
   getEmailTemplates,
-  updateEmailTemplate
+  updateEmailTemplate,
+  getConversationWithUser
 } from '../controllers/communicationController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import advancedResults from '../middleware/advancedResults.js';
@@ -35,6 +36,8 @@ router
   .route('/messages')
   .get(getMessages)
   .post(sendMessage);
+
+router.get('/messages/conversation/:userId', getConversationWithUser);
 
 // Email template routes
 router

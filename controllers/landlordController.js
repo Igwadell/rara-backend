@@ -64,10 +64,16 @@ export const getLandlordBookings = asyncHandler(async (req, res, next) => {
   const properties = await Property.find({ landlord: req.user.id });
   const propertyIds = properties.map(property => property._id);
 
-  // Add filter to only show bookings for landlord's properties
-  req.query.property = { $in: propertyIds };
+  // Get bookings for these properties, and populate user and property info
+  const bookings = await Booking.find({ property: { $in: propertyIds } })
+    .populate('user', 'name')
+    .populate('property', 'title');
 
-  res.status(200).json(res.advancedResults);
+  res.status(200).json({
+    success: true,
+    count: bookings.length,
+    data: bookings
+  });
 });
 
 // @desc    Get landlord's earnings

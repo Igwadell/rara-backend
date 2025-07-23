@@ -9,6 +9,7 @@ import {
   getLandlords,
   getTenants,
   getAgents,
+  getAdmins,
   
   // Property Management
   getAllPropertiesForAdmin,
@@ -59,6 +60,7 @@ router.put('/users/:id/role', changeUserRole);
 router.get('/users/landlords', getLandlords);
 router.get('/users/tenants', getTenants);
 router.get('/users/agents', getAgents);
+router.get('/users/admins', getAdmins);
 
 // Property Management Routes
 router

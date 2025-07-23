@@ -132,6 +132,18 @@ export const getAgents = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc    Get admins
+// @route   GET /api/v1/admin/users/admins
+// @access  Private/Admin
+export const getAdmins = asyncHandler(async (req, res, next) => {
+  const admins = await User.find({ role: 'admin' }).select('-password');
+  res.status(200).json({
+    success: true,
+    count: admins.length,
+    data: admins
+  });
+});
+
 // ==================== PROPERTY MANAGEMENT ====================
 
 // @desc    Get all properties for admin

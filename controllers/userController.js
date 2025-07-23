@@ -133,4 +133,16 @@ export const updateAvatar = asyncHandler(async (req, res, next) => {
     success: true,
     data: user
   });
+});
+
+// @desc    Get all admin users (public for logged-in users)
+// @route   GET /api/v1/users/admins
+// @access  Private (any logged-in user)
+export const getAdminsPublic = asyncHandler(async (req, res, next) => {
+  const admins = await User.find({ role: 'admin' }).select('-password');
+  res.status(200).json({
+    success: true,
+    count: admins.length,
+    data: admins
+  });
 }); 

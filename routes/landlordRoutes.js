@@ -29,7 +29,7 @@ router.put('/properties/:id', updateLandlordProperty);
 // Booking Management Routes
 router
   .route('/bookings')
-  .get(advancedResults(Booking), getLandlordBookings);
+  .get(getLandlordBookings);
 
 // Analytics & Earnings Routes
 router.get('/earnings', getLandlordEarnings);

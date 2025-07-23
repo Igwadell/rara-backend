@@ -6,7 +6,8 @@ import {
   updateUser,
   deleteUser,
   getRoles,
-  updateAvatar
+  updateAvatar,
+  getAdminsPublic
 } from '../controllers/userController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import advancedResults from '../middleware/advancedResults.js';
@@ -16,6 +17,9 @@ const router = express.Router();
 
 // Use protect middleware for all routes
 router.use(protect);
+
+// Public for any logged-in user
+router.get('/admins', getAdminsPublic);
 
 // Routes that require admin privileges
 router.use(authorize('admin'));

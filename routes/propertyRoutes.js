@@ -18,12 +18,14 @@ import Property from '../models/Property.js';
 // Include other resource routers
 import bookingRouter from './bookingRoutes.js';
 import reviewRouter from './reviewRoutes.js';
+import blockedDateRouter from './blockedDateRoutes.js';
 
 const router = express.Router();
 
 // Re-route into other resource routers
 router.use('/:propertyId/bookings', bookingRouter);
 router.use('/:propertyId/reviews', reviewRouter);
+router.use('/:propertyId/blocked-dates', blockedDateRouter);
 
 // Public routes
 router.get('/', advancedResults(Property, {

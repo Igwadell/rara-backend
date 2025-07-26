@@ -88,9 +88,10 @@ BookingSchema.index(
   { unique: true }
 );
 
-// Validate booking dates don't overlap with existing bookings
+// Validate booking dates don't overlap with existing bookings or blocked dates
 BookingSchema.pre('save', async function(next) {
   if (this.isModified('checkInDate') || this.isModified('checkOutDate') || this.isNew) {
+    // Check for overlapping bookings
     const overlappingBooking = await this.constructor.findOne({
       property: this.property,
       _id: { $ne: this._id },
@@ -105,6 +106,24 @@ BookingSchema.pre('save', async function(next) {
 
     if (overlappingBooking) {
       const err = new Error('Property is already booked for the selected dates');
+      err.name = 'ValidationError';
+      return next(err);
+    }
+
+    // Check for blocked dates
+    const BlockedDate = mongoose.model('BlockedDate');
+    const blockedDate = await BlockedDate.findOne({
+      property: this.property,
+      $or: [
+        {
+          startDate: { $lte: this.checkOutDate },
+          endDate: { $gte: this.checkInDate }
+        }
+      ]
+    });
+
+    if (blockedDate) {
+      const err = new Error('Property is blocked for the selected dates');
       err.name = 'ValidationError';
       return next(err);
     }

@@ -13,7 +13,15 @@ const BookingSchema = new mongoose.Schema({
   },
   checkInDate: {
     type: Date,
-    required: [true, 'Please add a check-in date']
+    required: [true, 'Please add a check-in date'],
+    validate: {
+      validator: function(value) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of today
+        return value >= today;
+      },
+      message: 'Check-in date cannot be in the past'
+    }
   },
   checkOutDate: {
     type: Date,

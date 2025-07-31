@@ -188,6 +188,16 @@ export const createBooking = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // Check if dates are in the past
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of today
+  
+  if (checkInDate < today) {
+    return next(
+      new ErrorResponse(`Cannot book dates in the past. Check-in date must be today or in the future`, 400)
+    );
+  }
+
   // Check if property is already booked for these dates
   const existingBooking = await Booking.findOne({
     property: req.params.propertyId,
@@ -276,6 +286,16 @@ export const updateBooking = asyncHandler(async (req, res, next) => {
     if (checkOutDate <= checkInDate) {
       return next(
         new ErrorResponse(`Check-out date must be after check-in date`, 400)
+      );
+    }
+
+    // Check if dates are in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of today
+    
+    if (checkInDate < today) {
+      return next(
+        new ErrorResponse(`Cannot book dates in the past. Check-in date must be today or in the future`, 400)
       );
     }
 

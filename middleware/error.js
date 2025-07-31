@@ -6,7 +6,12 @@ import ErrorResponse from '../utils/errorResponse.js';
   error.message = err.message;
 
   // Log to console for dev
-  console.error(err.stack.red);
+  console.error('Error details:', {
+    name: err.name,
+    message: err.message,
+    stack: err.stack,
+    errors: err.errors
+  });
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
@@ -22,13 +27,20 @@ import ErrorResponse from '../utils/errorResponse.js';
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors).map(val => val.message);
+    let message = 'Validation error';
+    if (err.errors && Object.keys(err.errors).length > 0) {
+      message = Object.values(err.errors).map(val => val.message).join(', ');
+    }
     error = new ErrorResponse(message, 400);
   }
 
-  res.status(error.statusCode || 500).json({
+  // Handle cases where error.message might be undefined
+  const errorMessage = error.message || err.message || 'Server Error';
+  const statusCode = error.statusCode || 500;
+
+  res.status(statusCode).json({
     success: false,
-    error: error.message || 'Server Error'
+    error: errorMessage
   });
 };
 

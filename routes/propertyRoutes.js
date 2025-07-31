@@ -8,7 +8,16 @@ import {
   propertyPhotoUpload,
   getPropertiesInRadius,
   verifyProperty,
-  uploadPropertyImages
+  uploadPropertyImages,
+  getPropertyAvailability,
+  getPropertyPricing,
+  updatePropertyPricing,
+  blockDates,
+  unblockDates,
+  getBookingWindow,
+  updateBookingWindow,
+  getStayLimits,
+  updateStayLimits
 } from '../controllers/propertyController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { uploadPropertyPhotos } from '../middleware/upload.js';
@@ -34,6 +43,17 @@ router.get('/', advancedResults(Property, {
 }), getProperties);
 router.get('/:id', getProperty);
 router.get('/radius/:zipcode/:distance', getPropertiesInRadius);
+
+// Property availability and management routes
+router.get('/:id/availability', getPropertyAvailability);
+router.get('/:id/pricing', getPropertyPricing);
+router.put('/:id/pricing', protect, authorize('landlord', 'admin'), updatePropertyPricing);
+router.post('/:id/block-dates', protect, authorize('landlord', 'admin'), blockDates);
+router.delete('/:id/block-dates', protect, authorize('landlord', 'admin'), unblockDates);
+router.get('/:id/booking-window', getBookingWindow);
+router.put('/:id/booking-window', protect, authorize('landlord', 'admin'), updateBookingWindow);
+router.get('/:id/stay-limits', getStayLimits);
+router.put('/:id/stay-limits', protect, authorize('landlord', 'admin'), updateStayLimits);
 
 // Protected routes
 router.post('/', protect, authorize('landlord', 'admin'), createProperty);

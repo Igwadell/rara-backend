@@ -26,6 +26,7 @@ import communicationRoutes from './routes/communicationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import landlordRoutes from './routes/landlordRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import calendarRoutes from './routes/calendarRoutes.js';
 
 import errorHandler from './middleware/error.js';
 
@@ -92,6 +93,7 @@ app.use('/api/v1/communication', communicationRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/landlord', landlordRoutes);
 app.use('/api/v1/upload', uploadRoutes);
+app.use('/api/v1/calendar', calendarRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

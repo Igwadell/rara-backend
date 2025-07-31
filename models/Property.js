@@ -41,6 +41,75 @@ const PropertySchema = new mongoose.Schema({
     required: [true, 'Please add a price'],
     min: [0, 'Price must be at least 0']
   },
+  cleaningFee: {
+    type: Number,
+    default: 0,
+    min: [0, 'Cleaning fee must be at least 0']
+  },
+  serviceFee: {
+    type: Number,
+    default: 0,
+    min: [0, 'Service fee must be at least 0']
+  },
+  securityDeposit: {
+    type: Number,
+    default: 0,
+    min: [0, 'Security deposit must be at least 0']
+  },
+  currency: {
+    type: String,
+    default: 'USD',
+    enum: ['USD', 'EUR', 'GBP', 'CAD', 'AUD']
+  },
+  pricingRules: [{
+    startDate: Date,
+    endDate: Date,
+    price: Number,
+    type: {
+      type: String,
+      enum: ['seasonal', 'weekend', 'holiday', 'custom']
+    }
+  }],
+  // Booking window settings
+  advanceBookingDays: {
+    type: Number,
+    default: 365,
+    min: [1, 'Advance booking days must be at least 1']
+  },
+  sameDayBooking: {
+    type: Boolean,
+    default: false
+  },
+  instantBooking: {
+    type: Boolean,
+    default: false
+  },
+  bookingLeadTime: {
+    type: Number,
+    default: 0,
+    min: [0, 'Booking lead time must be at least 0']
+  },
+  // Stay limits
+  minimumStay: {
+    type: Number,
+    default: 1,
+    min: [1, 'Minimum stay must be at least 1']
+  },
+  maximumStay: {
+    type: Number,
+    default: 30,
+    min: [1, 'Maximum stay must be at least 1']
+  },
+  minimumAdvanceNotice: {
+    type: Number,
+    default: 0,
+    min: [0, 'Minimum advance notice must be at least 0']
+  },
+  maximumAdvanceNotice: {
+    type: Number,
+    default: 365,
+    min: [1, 'Maximum advance notice must be at least 1']
+  },
   bedrooms: {
     type: Number,
     required: [true, 'Please add number of bedrooms'],

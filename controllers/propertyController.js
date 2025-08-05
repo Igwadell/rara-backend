@@ -437,19 +437,93 @@ export const blockDates = asyncHandler(async (req, res, next) => {
     );
   }
   
-  const { startDate, endDate, reason } = req.body;
+  // Check if request body contains dates array or single date range
+  let datesToBlock = [];
   
-  const blockedDate = await BlockedDate.create({
-    property: req.params.id,
-    startDate,
-    endDate,
-    reason,
-    blockedBy: req.user.id
-  });
+  if (Array.isArray(req.body)) {
+    // Handle array of date objects
+    datesToBlock = req.body;
+  } else if (req.body.startDate && req.body.endDate) {
+    // Handle single date range (backward compatibility)
+    datesToBlock = [req.body];
+  } else {
+    return next(
+      new ErrorResponse(
+        `Invalid request format. Expected array of date objects or single date range`,
+        400
+      )
+    );
+  }
+  
+  // Validate each date object
+  for (const dateObj of datesToBlock) {
+    if (!dateObj.startDate || !dateObj.endDate) {
+      return next(
+        new ErrorResponse(
+          `Each date object must have startDate and endDate`,
+          400
+        )
+      );
+    }
+    
+    // Validate date format
+    const startDate = new Date(dateObj.startDate);
+    const endDate = new Date(dateObj.endDate);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return next(
+        new ErrorResponse(
+          `Invalid date format. Use YYYY-MM-DD format`,
+          400
+        )
+      );
+    }
+    
+    if (endDate < startDate) {
+      return next(
+        new ErrorResponse(
+          `End date must be on or after start date`,
+          400
+        )
+      );
+    }
+  }
+  
+  // Create blocked date records
+  const blockedDates = [];
+  const errors = [];
+  
+  for (const dateObj of datesToBlock) {
+    try {
+      const blockedDate = await BlockedDate.create({
+        property: req.params.id,
+        startDate: new Date(dateObj.startDate),
+        endDate: new Date(dateObj.endDate),
+        reason: dateObj.reason || 'Blocked by owner',
+        blockedBy: req.user.id
+      });
+      blockedDates.push(blockedDate);
+    } catch (error) {
+      if (error.code === 11000) {
+        // Duplicate key error - date range already exists
+        errors.push(`Date range ${dateObj.startDate} to ${dateObj.endDate} already blocked`);
+      } else if (error.name === 'ValidationError') {
+        errors.push(`Invalid date range: ${dateObj.startDate} to ${dateObj.endDate} - ${error.message}`);
+      } else {
+        errors.push(`Error blocking dates ${dateObj.startDate} to ${dateObj.endDate}: ${error.message}`);
+      }
+    }
+  }
   
   res.status(201).json({
     success: true,
-    data: blockedDate
+    data: {
+      blockedDates,
+      errors,
+      totalRequested: datesToBlock.length,
+      successfullyBlocked: blockedDates.length,
+      failedToBlock: errors.length
+    }
   });
 });
 
@@ -478,17 +552,96 @@ export const unblockDates = asyncHandler(async (req, res, next) => {
     );
   }
   
-  const { startDate, endDate } = req.body;
+  // Check if request body contains dates array or single date range
+  let datesToUnblock = [];
   
-  const deletedBlockedDates = await BlockedDate.deleteMany({
-    property: req.params.id,
-    startDate: { $gte: new Date(startDate) },
-    endDate: { $lte: new Date(endDate) }
-  });
+  if (Array.isArray(req.body)) {
+    // Handle array of date objects
+    datesToUnblock = req.body;
+  } else if (req.body.startDate && req.body.endDate) {
+    // Handle single date range (backward compatibility)
+    datesToUnblock = [req.body];
+  } else {
+    return next(
+      new ErrorResponse(
+        `Invalid request format. Expected array of date objects or single date range`,
+        400
+      )
+    );
+  }
+  
+  // Validate each date object
+  for (const dateObj of datesToUnblock) {
+    if (!dateObj.startDate || !dateObj.endDate) {
+      return next(
+        new ErrorResponse(
+          `Each date object must have startDate and endDate`,
+          400
+        )
+      );
+    }
+    
+    // Validate date format
+    const startDate = new Date(dateObj.startDate);
+    const endDate = new Date(dateObj.endDate);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return next(
+        new ErrorResponse(
+          `Invalid date format. Use YYYY-MM-DD format`,
+          400
+        )
+      );
+    }
+    
+    if (endDate < startDate) {
+      return next(
+        new ErrorResponse(
+          `End date must be on or after start date`,
+          400
+        )
+      );
+    }
+  }
+  
+  // Delete blocked date records
+  const deletedDates = [];
+  const errors = [];
+  let totalDeletedCount = 0;
+  
+  for (const dateObj of datesToUnblock) {
+    try {
+      const deletedBlockedDates = await BlockedDate.deleteMany({
+        property: req.params.id,
+        startDate: { $gte: new Date(dateObj.startDate) },
+        endDate: { $lte: new Date(dateObj.endDate) }
+      });
+      
+      if (deletedBlockedDates.deletedCount > 0) {
+        deletedDates.push({
+          startDate: dateObj.startDate,
+          endDate: dateObj.endDate,
+          deletedCount: deletedBlockedDates.deletedCount
+        });
+        totalDeletedCount += deletedBlockedDates.deletedCount;
+      } else {
+        errors.push(`No blocked dates found for range ${dateObj.startDate} to ${dateObj.endDate}`);
+      }
+    } catch (error) {
+      errors.push(`Error unblocking dates ${dateObj.startDate} to ${dateObj.endDate}: ${error.message}`);
+    }
+  }
   
   res.status(200).json({
     success: true,
-    data: { deletedCount: deletedBlockedDates.deletedCount }
+    data: {
+      deletedDates,
+      errors,
+      totalRequested: datesToUnblock.length,
+      successfullyUnblocked: deletedDates.length,
+      failedToUnblock: errors.length,
+      totalDeletedCount
+    }
   });
 });
 

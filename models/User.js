@@ -32,6 +32,12 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add a phone number']
   },
+  address: {
+    type: String
+  },
+  bio: {
+    type: String
+  },
   photo: {
     type: String,
     default: 'no-photo.jpg'

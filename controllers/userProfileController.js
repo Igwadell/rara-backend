@@ -5,6 +5,7 @@ import UserSettings from '../models/UserSettings.js';
 import SavedProperty from '../models/SavedProperty.js';
 import Property from '../models/Property.js';
 import path from 'path';
+import cloudinary from '../config/cloudinary.js';
 
 // @desc    Get user profile
 // @route   GET /api/v1/user/profile
@@ -89,35 +90,33 @@ export const uploadUserAvatar = asyncHandler(async (req, res, next) => {
 
   const file = req.files.avatar;
 
-  // Check file type
+  // Validate file type and size as usual
   if (!file.mimetype.startsWith('image')) {
     return next(new ErrorResponse('Please upload an image file', 400));
   }
-
-  // Check file size
   if (file.size > process.env.MAX_FILE_UPLOAD) {
     return next(new ErrorResponse(`Please upload an image less than ${process.env.MAX_FILE_UPLOAD}`, 400));
   }
 
-  // Create custom filename
-  file.name = `avatar_${req.user.id}_${Date.now()}${path.parse(file.name).ext}`;
+  // Upload to Cloudinary directly from temp file
+  const result = await cloudinary.uploader.upload(file.tempFilePath, {
+    folder: 'avatars',
+    width: 150,
+    crop: 'scale'
+  });
 
-  file.mv(`./uploads/${file.name}`, async err => {
-    if (err) {
-      console.error(err);
-      return next(new ErrorResponse('Problem with file upload', 500));
-    }
+  // Update user 'photo' field with Cloudinary URL
+  const user = await User.findByIdAndUpdate(req.user.id, {
+    photo: result.secure_url
+  }, { new: true }).select('-password');
 
-    const user = await User.findByIdAndUpdate(req.user.id, {
-      avatar: file.name
-    }, { new: true }).select('-password');
-
-    res.status(200).json({
-      success: true,
-      data: user
-    });
+  res.status(200).json({
+    success: true,
+    data: user
   });
 });
+
+
 
 // @desc    Get user's saved properties
 // @route   GET /api/v1/user/saved-properties

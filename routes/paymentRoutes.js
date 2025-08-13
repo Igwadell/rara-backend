@@ -10,7 +10,9 @@ import {
   getPaymentMethods,
   addPaymentMethod,
   removePaymentMethod,
-  getRefunds
+  getRefunds,
+  handleMomoWebhook,
+  verifyMomoPayment
 } from '../controllers/paymentController.js';
 import advancedResults from '../middleware/advancedResults.js';
 import Payment from '../models/Payment.js';
@@ -51,5 +53,9 @@ router.post('/verify', verifyPayment);
 router.get('/history', getPaymentHistory);
 
 router.get('/refunds', authorize('admin'), getRefunds);
+
+// paymentRoute.js - Add these routes
+router.post('/momo/webhook', handleMomoWebhook);
+router.get('/momo/verify/:transactionId', verifyMomoPayment);
 
 export default router;

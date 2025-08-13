@@ -6,6 +6,21 @@ import ErrorResponse from '../utils/errorResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import sendEmail from '../utils/sendEmail.js';
 import axios from 'axios';
+import crypto from 'crypto';
+
+
+// MTN MoMo Configuration
+const MTN_CONFIG = {
+  environment: process.env.MTN_ENVIRONMENT,
+  subscriptionKey: process.env.MTN_SUBSCRIPTION_KEY,
+  apiUserId: process.env.MTN_API_USER_ID,
+  apiKey: process.env.MTN_API_KEY,
+  baseUrl: process.env.MTN_ENVIRONMENT === 'production' 
+    ? 'https://momodeveloper.mtn.com' 
+    : 'https://sandbox.momodeveloper.mtn.com',
+  callbackUrl: process.env.MTN_CALLBACK_URL, 
+   currency: 'RWF'
+};
 
 /**
  * @desc    Get all payments
@@ -161,6 +176,8 @@ export const getPayment = asyncHandler(async (req, res, next) => {
  * @route   POST /api/v1/bookings/:bookingId/payments
  * @access  Private
  */
+// MTN Token Helper (declare only once at the bottom of your file)
+
 export const processPayment = asyncHandler(async (req, res, next) => {
   const booking = await Booking.findById(req.params.bookingId).populate({
     path: 'property',
@@ -168,116 +185,128 @@ export const processPayment = asyncHandler(async (req, res, next) => {
   });
 
   if (!booking) {
-    return next(
-      new ErrorResponse(
-        `Booking not found with id of ${req.params.bookingId}`,
-        404
-      )
-    );
+    return next(new ErrorResponse(`Booking not found with id of ${req.params.bookingId}`, 404));
   }
 
-  // Verify authorization
   if (booking.user.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(
-      new ErrorResponse(
-        `User ${req.user.id} is not authorized to pay for this booking`,
-        401
-      )
-    );
+    return next(new ErrorResponse(`User ${req.user.id} is not authorized to pay for this booking`, 401));
   }
 
-  // Check if booking is already paid
   if (booking.paymentStatus === 'paid') {
     return next(new ErrorResponse(`Booking is already paid`, 400));
   }
 
-  // Check if booking is cancelled
   if (booking.status === 'cancelled') {
     return next(new ErrorResponse(`Cancelled bookings cannot be paid`, 400));
   }
 
-  // In a real implementation, you would integrate with a payment gateway here
-  // This is a mock implementation for demonstration purposes
-
   const { paymentMethod, paymentDetails } = req.body;
-
-  // Validate payment method
   const validPaymentMethods = ['mobile_money', 'credit_card', 'bank_transfer'];
+  
   if (!validPaymentMethods.includes(paymentMethod)) {
     return next(new ErrorResponse(`Invalid payment method`, 400));
   }
 
-  // Mock payment processing
   let transactionId;
   let paymentStatus = 'pending';
+  let paymentResponse = {};
 
   try {
-    // In a real app, this would call your payment gateway API
-    // For example, for mobile money:
     if (paymentMethod === 'mobile_money') {
-      // Validate mobile money details
       if (!paymentDetails.phone || !paymentDetails.network) {
-        return next(
-          new ErrorResponse(`Phone number and network are required`, 400)
-        );
+        return next(new ErrorResponse(`Phone number and network are required`, 400));
       }
 
-      // Mock API call to payment processor
+      const formattedPhone = paymentDetails.phone.startsWith('0') 
+        ? '250' + paymentDetails.phone.substring(1) 
+        : paymentDetails.phone;
+
+      if (paymentDetails.network === 'MTN') {
+        if (!/^250(78|79|72|73)\d{7}$/.test(formattedPhone)) {
+          return next(new ErrorResponse(`Valid MTN Rwanda number required (25078xxxxxx)`, 400));
+        }
+
+        transactionId = `RENT-${booking._id}-${crypto.randomBytes(4).toString('hex')}`;
+        const token = await getMomoToken(); // Using the single declared function
+        
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'X-Reference-Id': transactionId,
+          'X-Target-Environment': MTN_CONFIG.environment,
+          'Content-Type': 'application/json',
+          'Ocp-Apim-Subscription-Key': MTN_CONFIG.subscriptionKey
+        };
+        
+        const payload = {
+          amount: booking.amount.toFixed(2),
+          currency: MTN_CONFIG.currency,
+          externalId: transactionId,
+          payer: {
+            partyIdType: 'MSISDN',
+            partyId: formattedPhone
+          },
+          payerMessage: `Rent for ${booking.property.title}`,
+          payeeNote: `Payment for booking ${booking._id}`
+        };
+        
+        const response = await axios.post(
+          `${MTN_CONFIG.baseUrl}/collection/v1_0/requesttopay`,
+          payload,
+          { headers }
+        );
+        
+        if (response.status === 202) {
+          paymentStatus = 'pending';
+          paymentResponse = {
+            momoStatus: 'pending',
+            message: 'Payment request sent to MTN MoMo. Please approve on your phone.'
+          };
+        } else {
+          throw new Error(`MTN payment failed with status ${response.status}`);
+        }
+      } else {
+        const mockResponse = await mockPaymentGatewayRequest({
+          amount: booking.amount,
+          currency: 'RWF',
+          paymentMethod,
+          paymentDetails: {
+            ...paymentDetails,
+            phone: formattedPhone
+          }
+        });
+        transactionId = mockResponse.transactionId;
+        paymentStatus = mockResponse.status;
+      }
+    } 
+    else if (paymentMethod === 'credit_card') {
+      if (!paymentDetails.cardNumber || !paymentDetails.expiry || !paymentDetails.cvv) {
+        return next(new ErrorResponse(`Card number, expiry and CVV are required`, 400));
+      }
+
       const mockResponse = await mockPaymentGatewayRequest({
         amount: booking.amount,
         currency: 'RWF',
         paymentMethod,
         paymentDetails
       });
-
       transactionId = mockResponse.transactionId;
       paymentStatus = mockResponse.status;
-    } else if (paymentMethod === 'credit_card') {
-      // Validate credit card details
-      if (
-        !paymentDetails.cardNumber ||
-        !paymentDetails.expiry ||
-        !paymentDetails.cvv
-      ) {
-        return next(
-          new ErrorResponse(
-            `Card number, expiry and CVV are required`,
-            400
-          )
-        );
-      }
-
-      // Mock API call to payment processor
-      const mockResponse = await mockPaymentGatewayRequest({
-        amount: booking.amount,
-        currency: 'RWF',
-        paymentMethod,
-        paymentDetails
-      });
-
-      transactionId = mockResponse.transactionId;
-      paymentStatus = mockResponse.status;
-    } else if (paymentMethod === 'bank_transfer') {
-      // Validate bank transfer details
+    } 
+    else if (paymentMethod === 'bank_transfer') {
       if (!paymentDetails.accountNumber || !paymentDetails.bankName) {
-        return next(
-          new ErrorResponse(`Account number and bank name are required`, 400)
-        );
+        return next(new ErrorResponse(`Account number and bank name are required`, 400));
       }
 
-      // Mock API call to payment processor
       const mockResponse = await mockPaymentGatewayRequest({
         amount: booking.amount,
         currency: 'RWF',
         paymentMethod,
         paymentDetails
       });
-
       transactionId = mockResponse.transactionId;
       paymentStatus = mockResponse.status;
     }
 
-    // Create payment record
     const payment = await Payment.create({
       booking: booking._id,
       user: req.user.id,
@@ -285,74 +314,64 @@ export const processPayment = asyncHandler(async (req, res, next) => {
       paymentMethod,
       transactionId,
       status: paymentStatus,
-      paymentDetails
+      paymentDetails: {
+        ...paymentDetails,
+        phone: paymentMethod === 'mobile_money' ? formattedPhone : undefined
+      },
+      ...(paymentMethod === 'mobile_money' && paymentDetails.network === 'MTN' ? {
+        gatewayResponse: paymentResponse
+      } : {})
     });
 
-    // Update booking payment status
     booking.paymentStatus = paymentStatus;
     await booking.save();
 
-    // Get user details for email
-    const user = await User.findById(req.user.id);
-
-    // Send payment confirmation email
-    const message = `Dear ${user.name},\n\nYour payment of ${booking.amount} RWF for booking ${booking.property.title} has been processed successfully.\n\nPayment Method: ${paymentMethod}\nTransaction ID: ${transactionId}\n\nThank you for using Rara.com!`;
-
-    try {
-      await sendEmail({
-        email: user.email,
-        subject: 'Rara.com - Payment Confirmation',
-        message
-      });
-    } catch (err) {
-      console.error('Failed to send payment confirmation email:', err);
-    }
-
-    // If landlord exists, send payment notification
-    if (booking.property.landlord) {
-      const landlord = await User.findById(booking.property.landlord);
-      if (landlord && landlord.email) {
-        const landlordMessage = `Dear ${landlord.name},\n\nA payment of ${booking.amount} RWF has been made for your property ${booking.property.title}.\n\nPayment Method: ${paymentMethod}\nTransaction ID: ${transactionId}\n\nPlease log in to your Rara.com account for more details.`;
-
+    if (paymentStatus !== 'pending' || paymentMethod !== 'mobile_money') {
+      const user = await User.findById(req.user.id);
+      if (user) {
         try {
           await sendEmail({
-            email: landlord.email,
-            subject: 'Rara.com - Payment Notification',
-            message: landlordMessage
+            email: user.email,
+            subject: 'Payment Confirmation',
+            message: `Dear ${user.name},\n\nYour payment of ${booking.amount} RWF for booking ${booking.property.title} has been processed.\n\nPayment Method: ${paymentMethod}\nTransaction ID: ${transactionId}`
           });
         } catch (err) {
-          console.error('Failed to send landlord notification email:', err);
+          console.error('Failed to send payment confirmation email:', err);
         }
       }
     }
 
-    res.status(201).json({
+    res.status(paymentMethod === 'mobile_money' && paymentDetails.network === 'MTN' ? 202 : 201).json({
       success: true,
-      data: payment
+      data: {
+        payment,
+        ...paymentResponse
+      }
     });
   } catch (err) {
     console.error('Payment processing error:', err);
-
-    // Create failed payment record
-    const payment = await Payment.create({
+    
+    await Payment.create({
       booking: booking._id,
       user: req.user.id,
       amount: booking.amount,
       paymentMethod,
       status: 'failed',
-      paymentDetails,
-      error: err.message
+      paymentDetails: req.body.paymentDetails,
+      error: err.message,
+      ...(paymentMethod === 'mobile_money' && paymentDetails.network === 'MTN' ? {
+        gatewayResponse: err.response?.data || { error: err.message }
+      } : {})
     });
 
-    // Update booking payment status
     booking.paymentStatus = 'failed';
     await booking.save();
 
-    return next(
-      new ErrorResponse(`Payment processing failed: ${err.message}`, 500)
-    );
+    return next(new ErrorResponse(`Payment processing failed: ${err.message}`, 500));
   }
 });
+
+// Remove any duplicate declarations of getMomoToken
 
 /**
  * @desc    Verify payment
@@ -713,4 +732,164 @@ export const getRefunds = asyncHandler(async (req, res, next) => {
     count: refunds.length,
     data: refunds
   });
+});
+const getMomoToken = async () => {
+  const authString = Buffer.from(`${MTN_CONFIG.apiUserId}:${MTN_CONFIG.apiKey}`).toString('base64');
+  const response = await axios.post(
+    `${MTN_CONFIG.baseUrl}/collection/token/`,
+    {},
+    {
+      headers: {
+        'Ocp-Apim-Subscription-Key': MTN_CONFIG.subscriptionKey,
+        'Authorization': `Basic ${authString}`
+      }
+    }
+  );
+  return response.data.access_token;
+};
+export const handleMomoWebhook = asyncHandler(async (req, res, next) => {
+  // Verify the webhook request (in production, verify signature)
+  const { financialTransactionId, externalId, status } = req.body;
+  
+  if (!financialTransactionId || !externalId || !status) {
+    return res.status(400).json({ success: false, error: 'Invalid webhook payload' });
+  }
+  
+  try {
+    // Find the payment record
+    const payment = await Payment.findOne({ transactionId: externalId })
+      .populate('booking')
+      .populate('user');
+    
+    if (!payment) {
+      console.error(`Payment not found for externalId: ${externalId}`);
+      return res.status(404).json({ success: false, error: 'Payment not found' });
+    }
+    
+    // Update payment status based on webhook
+    let newStatus = 'pending';
+    switch (status) {
+      case 'SUCCESSFUL':
+        newStatus = 'completed';
+        break;
+      case 'FAILED':
+        newStatus = 'failed';
+        break;
+      default:
+        newStatus = 'pending';
+    }
+    
+    // Only update if status changed
+    if (payment.status !== newStatus) {
+      payment.status = newStatus;
+      payment.gatewayResponse = req.body;
+      await payment.save();
+      
+      // Update booking payment status
+      if (payment.booking) {
+        const booking = await Booking.findById(payment.booking._id);
+        if (booking) {
+          booking.paymentStatus = newStatus === 'completed' ? 'paid' : 'failed';
+          await booking.save();
+        }
+      }
+      
+      // Send payment confirmation email if completed
+      if (newStatus === 'completed' && payment.user) {
+        const user = await User.findById(payment.user._id || payment.user);
+        if (user) {
+          const message = `Dear ${user.name},\n\nYour payment of ${payment.amount} RWF for booking ${payment.booking._id} has been processed successfully via MTN MoMo.\n\nTransaction ID: ${financialTransactionId}\n\nThank you for your business!`;
+          
+          try {
+            await sendEmail({
+              email: user.email,
+              subject: 'Rent Payment Confirmation',
+              message
+            });
+          } catch (emailError) {
+            console.error('Failed to send payment confirmation email:', emailError);
+          }
+        }
+      }
+    }
+    
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+/**
+ * Verify MTN MoMo Payment Status
+ */
+export const verifyMomoPayment = asyncHandler(async (req, res, next) => {
+  const { transactionId } = req.params;
+  
+  try {
+    // Find payment record
+    const payment = await Payment.findOne({ transactionId })
+      .populate('booking')
+      .populate('user');
+    
+    if (!payment) {
+      return next(new ErrorResponse(`Payment not found with transaction ID ${transactionId}`, 404));
+    }
+    
+    // Verify authorization
+    if (payment.user.toString() !== req.user.id && req.user.role !== 'admin') {
+      return next(new ErrorResponse(`Not authorized to verify this payment`, 401));
+    }
+    
+    // Get MTN MoMo auth token
+    const token = await getMomoToken();
+    
+    // Check payment status with MTN
+    const response = await axios.get(
+      `${MTN_CONFIG.baseUrl}/collection/v1_0/requesttopay/${transactionId}`,
+      {
+        headers: {
+          'X-Target-Environment': MTN_CONFIG.environment,
+          'Ocp-Apim-Subscription-Key': MTN_CONFIG.subscriptionKey,
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    
+    // Update payment status if changed
+    const momoStatus = response.data.status;
+    let newStatus = payment.status;
+    
+    if (momoStatus === 'SUCCESSFUL' && payment.status !== 'completed') {
+      newStatus = 'completed';
+    } else if (momoStatus === 'FAILED' && payment.status !== 'failed') {
+      newStatus = 'failed';
+    }
+    
+    if (newStatus !== payment.status) {
+      payment.status = newStatus;
+      payment.gatewayResponse = response.data;
+      await payment.save();
+      
+      // Update booking payment status
+      if (payment.booking) {
+        const booking = await Booking.findById(payment.booking._id);
+        if (booking) {
+          booking.paymentStatus = newStatus === 'completed' ? 'paid' : 'failed';
+          await booking.save();
+        }
+      }
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        payment,
+        verification: response.data
+      }
+    });
+  } catch (error) {
+    console.error('MTN MoMo verification error:', error.response?.data || error.message);
+    next(new ErrorResponse(`Payment verification failed: ${error.message}`, 500));
+  }
 });

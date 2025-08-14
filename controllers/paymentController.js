@@ -7,6 +7,7 @@ import asyncHandler from '../utils/asyncHandler.js';
 import sendEmail from '../utils/sendEmail.js';
 import axios from 'axios';
 import crypto from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 
 
 // MTN MoMo Configuration
@@ -19,7 +20,7 @@ const MTN_CONFIG = {
     ? 'https://momodeveloper.mtn.com' 
     : 'https://sandbox.momodeveloper.mtn.com',
   callbackUrl: process.env.MTN_CALLBACK_URL, 
-   currency: 'RWF'
+   currency: 'EUR'
 };
 
 /**
@@ -210,6 +211,7 @@ export const processPayment = asyncHandler(async (req, res, next) => {
   let transactionId;
   let paymentStatus = 'pending';
   let paymentResponse = {};
+  let formattedPhone;
 
   try {
     if (paymentMethod === 'mobile_money') {
@@ -226,7 +228,7 @@ export const processPayment = asyncHandler(async (req, res, next) => {
           return next(new ErrorResponse(`Valid MTN Rwanda number required (25078xxxxxx)`, 400));
         }
 
-        transactionId = `RENT-${booking._id}-${crypto.randomBytes(4).toString('hex')}`;
+        transactionId = uuidv4()
         const token = await getMomoToken(); // Using the single declared function
         
         const headers = {

@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import cookieParser from 'cookie-parser';
 import fileUpload from 'express-fileupload';
 
 // Import routes
@@ -41,6 +42,8 @@ const app = express();
 // CORS configuration
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', 'https://www.raraiwacu.com');
+  // res.setHeader('Access-Control-Allow-Origin', ' http://localhost:5173');
+ 
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -58,6 +61,9 @@ await connect();
 
 // Middleware
 app.use(express.json());
+
+// Cookie parser
+app.use(cookieParser());
 app.use(helmet());
 app.use(mongoSanitize());
 app.use(xss());

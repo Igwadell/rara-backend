@@ -11,7 +11,8 @@ export const protect = async (req, res, next) => {
     req.headers.authorization.startsWith('Bearer')
   ) {
     token = req.headers.authorization.split(' ')[1];
-  } else if (req.cookies.token) {
+    // Check if req.cookies exists before trying to access properties on it
+  } else if (req.cookies && req.cookies.token) {
     token = req.cookies.token;
   }
 
@@ -25,6 +26,11 @@ export const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = await User.findById(decoded.id);
+
+    // Check if user still exists
+    if (!req.user) {
+      return next(new ErrorResponse('Not authorized to access this route', 401));
+    }
 
     next();
   } catch (err) {

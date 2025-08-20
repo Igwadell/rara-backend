@@ -52,7 +52,7 @@ export const register = asyncHandler(async (req, res, next) => {
     console.error(err);
     user.verificationToken = undefined;
     await user.save({ validateBeforeSave: false });
-
+    
     return next(new ErrorResponse('Email could not be sent', 500));
   }
 });

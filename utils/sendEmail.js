@@ -36,13 +36,14 @@ class Email {
 
     // Mailtrap for development
     return nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-      auth: {
-        user: process.env.EMAIL_USERNAME,
-        pass: process.env.EMAIL_PASSWORD
-      }
-    });
+            host: process.env.SMTP_HOST,
+            port: process.env.SMTP_PORT,
+            secure: false, // must be false for 587
+            auth: {
+              user: process.env.SMTP_EMAIL,
+              pass: process.env.SMTP_PASSWORD
+            }
+          });
   }
 
   /**
@@ -104,18 +105,19 @@ class Email {
 export const sendEmail = async ({ email, subject, message }) => {
   try {
     // Create transporter
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      auth: {
-        user: process.env.SMTP_EMAIL,
-        pass: process.env.SMTP_PASSWORD
-      }
-    });
+          const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: process.env.SMTP_PORT,
+            secure: false, // must be false for 587
+            auth: {
+              user: process.env.SMTP_EMAIL,
+              pass: process.env.SMTP_PASSWORD
+            }
+          });
 
     // Send email
     await transporter.sendMail({
-      from: `Rara.com <${process.env.EMAIL_FROM}>`,
+      from: `Rara.com <${process.env.FROM_EMAIL}>`,
       to: email,
       subject,
       text: message,

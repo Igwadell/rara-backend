@@ -40,7 +40,7 @@ export const register = asyncHandler(async (req, res, next) => {
   try {
     await sendEmail({
       email: user.email,
-      subject: 'Rara.com - Account Verification',
+      subject: 'Raraiwacu.com - Account Verification',
       message
     });
 

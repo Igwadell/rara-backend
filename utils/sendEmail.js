@@ -102,31 +102,36 @@ class Email {
  * @returns {Promise}
  * @throws  {ErrorResponse} - If email sending fails
  */
+
 export const sendEmail = async ({ email, subject, message }) => {
   try {
-    // Create transporter
-          const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: process.env.SMTP_PORT,
-            secure: false, // must be false for 587
-            auth: {
-              user: process.env.SMTP_EMAIL,
-              pass: process.env.SMTP_PASSWORD
-            }
-          });
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: false, // use true for 465
+      auth: {
+        user: process.env.SMTP_EMAIL,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    });
 
-    // Send email
+    // Optional debug
+    await transporter.verify();
+
     await transporter.sendMail({
-      from: `Rara.com <${process.env.FROM_EMAIL}>`,
+      from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
       to: email,
       subject,
       text: message,
-      html: `<p>${message}</p>`
+      html: `<p>${message}</p>`,
     });
+
+    console.log("✅ Email sent successfully");
   } catch (err) {
-    console.error('Email sending error:', err);
-    throw new ErrorResponse('Email could not be sent', 500);
+    console.error("❌ Email sending error:", err);
+    throw new ErrorResponse("Email could not be sent", 500);
   }
 };
+
 
 export default Email;

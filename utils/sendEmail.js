@@ -104,6 +104,7 @@ class Email {
  */
 
 export const sendEmail = async ({ email, subject, message }) => {
+  console.log(email, subject, message);
   try {
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,

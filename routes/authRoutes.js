@@ -10,7 +10,8 @@ import {
   updatePassword,
   forgotPassword,
   resetPassword,
-  verifyEmail
+  verifyEmail,
+  googleLogin
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -19,6 +20,7 @@ const router = express.Router();
 router.post('/register', register);
 router.get('/verify/:verificationToken', verifyUser);
 router.post('/login', login);
+router.post("/google", googleLogin);
 router.post('/logout', logout);
 router.post('/refresh', refresh);
 router.get('/me', protect, getMe);

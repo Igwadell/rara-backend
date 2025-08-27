@@ -1,9 +1,17 @@
+import fetch from 'node-fetch';
+
+// Polyfill fetch globally for Node 22+
+globalThis.fetch = fetch;
+
 import User from '../models/User.js';
 import ErrorResponse from '../utils/errorResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
-import sendEmail from '../utils/sendEmail.js';
+import { sendEmail } from '../utils/sendEmail.js';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+// import { OAuth2Client } from 'google-auth-library';
+import { generateToken } from '../utils/generateToken.js';
+import * as jose from 'jose';
 
 // @desc    Register user
 // @route   POST /api/v1/auth/register
@@ -116,6 +124,83 @@ console.log("pass&Ema:",email,password);
 
   sendTokenResponse(user, 200, res);
 });
+
+
+
+
+
+// Google Login controller
+export const googleLogin = asyncHandler(async (req, res, next) => {
+  const { token } = req.body;
+
+  if (!token) return next(new ErrorResponse("Google token is required", 400));
+
+  let payload;
+  try {
+    // Verify token using Google's JWKS
+    const { payload: verifiedPayload } = await jose.jwtVerify(
+      token,
+      async (header) => {
+        // Fetch Google's public keys
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/certs');
+        const jwks = await res.json();
+        const keyData = jwks.keys.find(k => k.kid === header.kid);
+        if (!keyData) throw new Error('Key not found');
+
+        return jose.importJWK(keyData);
+      },
+      {
+        audience: process.env.GOOGLE_CLIENT_ID,
+        issuer: 'https://accounts.google.com',
+      }
+    );
+
+    payload = verifiedPayload;
+  } catch (err) {
+    console.error("Google token verification error:", err);
+    return next(new ErrorResponse("Invalid Google token", 401));
+  }
+
+  const { email, name, picture } = payload;
+
+  if (!email) return next(new ErrorResponse("Google account has no email", 400));
+
+  // Check if user exists
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    // Create a new user
+    user = await User.create({
+      name,
+      email,
+      password: "google-oauth", // placeholder password
+      photo: picture,
+      isVerified: true,
+      role: "user", // default role
+      isGoogleUser: true 
+    });
+  }
+
+  // Ensure existing user is marked verified if they login via Google
+  if (!user.isVerified) {
+    user.isVerified = true;
+    await user.save({ validateBeforeSave: false });
+  }
+
+  // Generate JWT token for your app
+  const authToken = generateToken(user._id);
+
+  res.status(200).json({
+    success: true,
+    token: authToken,
+    role: user.role,
+    user,
+  });
+});
+
+
+
+
 
 // @desc    Get current logged in user
 // @route   GET /api/v1/auth/me

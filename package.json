@@ -9,6 +9,9 @@
     "data:import": "node seeder.js",
     "data:destroy": "node seeder.js -d"
   },
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
     "@google/maps": "^1.1.3",
     "@react-oauth/google": "^0.12.2",
